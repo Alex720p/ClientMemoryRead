@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include <Windows.h>
 #include <vector>
 #include <queue>
@@ -7,37 +8,40 @@
 #define PATTERN_2 0xBBAAFFEEDDCCBBAA //will be used to find ReadMemoryClient
 
 #define VIRTUAL_PAGE_SIZE 4096
-#define DEFAULT_DRIVER_REQUEST_BUFFER_SIZE VIRTUAL_PAGE_SIZE
-#define DEFAULT_DRIVER_READ_BUFFER_SIZE 4*VIRTUAL_PAGE_SIZE
-#define DEFAULT_AFTER_INITIALIZATION_DRIVER_REQUEST_BUFFER_SIZE (DEFAULT_DRIVER_REQUEST_BUFFER_SIZE - sizeof(DWORD64) - sizeof(SIZE_T))
 
+#define REGISTER_RECURRING_READS_BUFFER_SIZE VIRTUAL_PAGE_SIZE
+#define REGISTER_RECURRING_READS_BUFFER_REMAINING_BYTES_AFTER_INITIALIZATION (REGISTER_RECURRING_READS_BUFFER_SIZE - sizeof(DWORD64))
+
+
+#define RECURRING_READS_BUFFER_ENTRY_START (sizeof(DWORD64) + sizeof(SIZE_T))
+#define RECURRING_READ_ENTRY_SIZE (sizeof(RecurringReadRequest) + sizeof(DWORD64)) //RecurringReadRequest, data addr
+
+#define GET_DATA_BUFFER_ADDRESS_FROM_ENTRY(addr) (addr + sizeof(RecurringReadRequest)) //get the address returned by the driver
 #define GET_BUFFER_REMAINING_BYTES_ADDRESS(buffer) (buffer + sizeof(DWORD64))
-#define GET_BUFFER_WRITE_ADDRESS(buffer, buffer_size, remaining_bytes) (buffer + buffer_size - remaining_bytes)
+#define GET_NEXT_EMPTY_ENTRY_ADDRESS(buffer, remaining_bytes, buffer_size) (buffer + buffer_size - remaining_bytes)
 
 /*
-	we'll use a queue system for the requests and retrieving the info from the driver
-	struct of the driver_init_buffer    : | PATTERN_1 | PATTERN_2 | FIRST_REQUEST_TABLE_ENTRY | FIRST_READS_TABLE_ENTRY  |
-	struct of the driver_request_buffer : | next buffer addr | remaining size | data, each data entry is DWORD64 + SIZE_T(address + size of read)
-	struct of the client_read_buffer : | next buffer addr | remaining size | data
+struct of register recurring read buffer: |next buffer addr | remaining bytes | data (each data entry: ReadRequest, interval, read data addr)
 */
 
+
 //todo: if a read is bigger than the buffer size(or remaining bytes), split the copy between multiple buffers
-struct ReadRequest {
+struct RecurringReadRequest {
 	DWORD64 read_addr;
 	SIZE_T read_size;
+	unsigned long interval;
 };
+
 
 class DriverCommunication {
 private:
-	std::vector<DWORD64> driver_request_info; //will contain all the addresses to all the request buffers
-	std::queue<ReadRequest> scheduled_reads;
-	DWORD64 first_read_buffer_entry;
+	std::vector<DWORD64> recurring_requests_buffers; //will contain all the addresses to all the request buffers
 
-	bool allocate_new_request_buffer();
 public:
 	DriverCommunication();
 	~DriverCommunication();
 
-
-	bool add_new_read_request(ReadRequest request);
+	DWORD64 register_new_recurring_read(RecurringReadRequest request); //returns the start of the entry addr
+	bool unregister_recurring_read(DWORD64 entry_addr);
+	//bool add_new_read_request(ReadRequest request, BYTE tag); //tag is used so that the client can easily keep track of what read has been done
 };
