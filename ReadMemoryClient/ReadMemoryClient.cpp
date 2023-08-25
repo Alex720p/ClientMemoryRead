@@ -11,7 +11,13 @@
 int main()
 {
     DriverCommunication com;
-    auto test = com.read_next_entry_from_driver<int>();
-    std::cout << "Hello World!\n";
+    auto test = com.register_new_recurring_read({ 500, sizeof(int), 100 });
+
+    std::cout << "hi" << std::endl;
+    std::cout << sizeof(RecurringReadRequest) << std::endl;
+
+    while (true) {
+        Sleep(5);
+    }
 }
 

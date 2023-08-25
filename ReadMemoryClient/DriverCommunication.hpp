@@ -4,16 +4,15 @@
 #include <vector>
 #include <queue>
 
-#define PATTERN_1 0xAABBCCDDEEFFAABB
-#define PATTERN_2 0xBBAAFFEEDDCCBBAA //will be used to find ReadMemoryClient
+#include "./common.hpp"
 
 #define VIRTUAL_PAGE_SIZE 4096
 
 #define REGISTER_RECURRING_READS_BUFFER_SIZE VIRTUAL_PAGE_SIZE
-#define REGISTER_RECURRING_READS_BUFFER_REMAINING_BYTES_AFTER_INITIALIZATION (REGISTER_RECURRING_READS_BUFFER_SIZE - sizeof(DWORD64))
+#define REGISTER_RECURRING_READS_BUFFER_REMAINING_BYTES_AFTER_INITIALIZATION (REGISTER_RECURRING_READS_BUFFER_SIZE - sizeof(DWORD64) - sizeof(unsigned long))
 
 
-#define RECURRING_READS_BUFFER_ENTRY_START (sizeof(DWORD64) + sizeof(SIZE_T))
+#define RECURRING_READS_BUFFER_ENTRY_START (sizeof(DWORD64) + sizeof(unsigned long))
 #define RECURRING_READ_ENTRY_SIZE (sizeof(RecurringReadRequest) + sizeof(DWORD64)) //RecurringReadRequest, data addr
 
 #define GET_DATA_BUFFER_ADDRESS_FROM_ENTRY(addr) (addr + sizeof(RecurringReadRequest)) //get the address returned by the driver
@@ -25,11 +24,10 @@ struct of register recurring read buffer: |next buffer addr | remaining bytes | 
 */
 
 
-//todo: if a read is bigger than the buffer size(or remaining bytes), split the copy between multiple buffers
 struct RecurringReadRequest {
 	DWORD64 read_addr;
-	SIZE_T read_size;
-	unsigned long interval;
+	unsigned long read_size;
+	unsigned int interval;
 };
 
 
